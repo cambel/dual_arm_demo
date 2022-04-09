@@ -22,33 +22,25 @@ int main(int argc, char** argv)
   spinner.start();
 
   std::vector<double> joint_values;
-  moveit::planning_interface::MoveGroupInterface rng_group_interface("rocket_and_groot");
-  moveit::planning_interface::MoveGroupInterface rocket_group_interface("rocket");
-  moveit::planning_interface::MoveGroupInterface groot_group_interface("groot");
+  moveit::planning_interface::MoveGroupInterface dual_arm_group("rocket_and_groot");
 
-  rng_group_interface.setMaxVelocityScalingFactor(1.0);
-  rng_group_interface.setMaxAccelerationScalingFactor(1.0);
-  rng_group_interface.setPlanningTime(15.0);
-  rng_group_interface.setNumPlanningAttempts(20.0);
+  dual_arm_group.setMaxVelocityScalingFactor(1.0);
+  dual_arm_group.setMaxAccelerationScalingFactor(1.0);
+  dual_arm_group.setPlanningTime(15.0);
+  dual_arm_group.setNumPlanningAttempts(20.0);
   
-  moveit::core::RobotModelConstPtr kinematic_model = rocket_group_interface.getRobotModel();
-  moveit::core::RobotStatePtr kinematic_state = rng_group_interface.getCurrentState();
-  const moveit::core::JointModelGroup* rocket_joint_model_group = kinematic_model->getJointModelGroup("rocket");
-  const moveit::core::JointModelGroup* groot_joint_model_group = kinematic_model->getJointModelGroup("groot");
-
-  const std::vector<std::string>& rocket_joint_names = rocket_joint_model_group->getVariableNames();
-  const std::vector<std::string>& groot_joint_names = groot_joint_model_group->getVariableNames();
-  std::vector<double> rocket_joint_values;
-  std::vector<double> groot_joint_values;
-
   std::random_device rd; 
   std::mt19937 gen(rd()); 
   std::uniform_int_distribution<> distr(-10, 10);
   std::uniform_int_distribution<> rad_distr(-30, 30);
 
+  std::string rocket_eff = "rocket_tool0";
+  std::string groot_eff = "groot_tool0";
+  
+
   geometry_msgs::Pose rocket_pose;
   geometry_msgs::Pose groot_pose;
- 
+  
   // w x y z
   Eigen::Quaternionf rocket_q = Eigen::Quaternionf(0.0044319521005895665 , -0.0018064082028716572, 0.714190127940822, -0.6999353940485185);
   Eigen::Quaternionf groot_q = Eigen::Quaternionf(0.7171097271676862 , -0.6959453209354478, -0.029260144371181365, -0.02361341612136324);
@@ -89,34 +81,20 @@ int main(int argc, char** argv)
     groot_pose.orientation.y = groot_q.y();
     groot_pose.orientation.z = groot_q.z();
 
-    double timeout = 0.1;
-    bool rocket_found_ik = kinematic_state->setFromIK(rocket_joint_model_group, rocket_pose, timeout);
-    bool groot_found_ik = kinematic_state->setFromIK(groot_joint_model_group, groot_pose, timeout);
+    dual_arm_group.clearPoseTargets();
+    dual_arm_group.setStartStateToCurrentState();
+    std::string rocket_eff = "rocket_tool0";
+    dual_arm_group.setPoseTarget(rocket_pose, rocket_eff);
 
-    if (rocket_found_ik && groot_found_ik)
-    {
-      kinematic_state->copyJointGroupPositions(rocket_joint_model_group, rocket_joint_values);
-      kinematic_state->copyJointGroupPositions(groot_joint_model_group, groot_joint_values);
-
-      for (std::size_t i = 0; i < rocket_joint_names.size(); ++i)
-      {
-        ROS_INFO("Joint %s: %f", rocket_joint_names[i].c_str(), rocket_joint_values[i]);
-        ROS_INFO("Joint %s: %f", groot_joint_names[i].c_str(), groot_joint_values[i]);
-      }
-    }
-    else
-    {
-      ROS_INFO("Did not find IK solution");
-    }
-    rng_group_interface.setJointValueTarget(rocket_joint_names, rocket_joint_values);
-    rng_group_interface.setJointValueTarget(groot_joint_names, groot_joint_values);
+    std::string groot_eff = "groot_tool0";
+    dual_arm_group.setPoseTarget(groot_pose, groot_eff);
 
     moveit::planning_interface::MoveGroupInterface::Plan my_plan;
-    bool success = (rng_group_interface.plan(my_plan) == moveit::planning_interface::MoveItErrorCode::SUCCESS);
+    bool success = (dual_arm_group.plan(my_plan) == moveit::planning_interface::MoveItErrorCode::SUCCESS);
     if(!success){
       ROS_INFO("Plan did not successed");
     }
-    rng_group_interface.execute(my_plan);
+    dual_arm_group.execute(my_plan);
   }
 
   ros::shutdown();
