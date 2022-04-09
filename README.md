@@ -25,6 +25,7 @@ Inside the docker:
 
 ```bash
 apt update
+source /opt/ros/$ROS_DISTRO/setup.bash
 rosdep update
 rosdep install --from-paths src --ignore-src -r -y
 catkin build && source devel/setup.bash

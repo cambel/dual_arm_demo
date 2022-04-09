@@ -23,7 +23,7 @@ services:
       - DOCKER_RUNTIME=nvidia
       # Needs to be explicitly define
       - ROS_HOSTNAME=localhost
-    image: dual_arm_demo:melodic
+    image: dual_arm_demo:noetic
     tty: true
     build:
       context: ../
